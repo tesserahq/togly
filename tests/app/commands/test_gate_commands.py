@@ -8,13 +8,15 @@ from app.commands.feature.enable_actor_gate_command import EnableActorGateComman
 from app.commands.feature.enable_boolean_gate_command import EnableBooleanGateCommand
 from app.exceptions.resource_not_found_error import ResourceNotFoundError
 from app.repositories.feature_audit_log_repository import FeatureAuditLogRepository
+from app.repositories.feature_repository import FeatureRepository
 from app.repositories.gate_repository import GateRepository
+from app.schemas.feature import ActorGateRequest, FeatureKey
 
 
 def test_enable_boolean_gate_commits_gate_and_audit(db, sample_feature, test_user):
-    gate = EnableBooleanGateCommand(
-        db, feature_key=sample_feature.key, current_user=test_user
-    ).execute()
+    gate = EnableBooleanGateCommand(db).execute(
+        FeatureKey(key=sample_feature.key), modified_by=test_user
+    )
 
     assert GateRepository(db).get_boolean_gate(sample_feature.id).id == gate.id
     entries = FeatureAuditLogRepository(db).list_by_feature_id(sample_feature.id)
@@ -22,13 +24,13 @@ def test_enable_boolean_gate_commits_gate_and_audit(db, sample_feature, test_use
 
 
 def test_disable_boolean_gate_commits_removal_and_audit(db, sample_feature, test_user):
-    EnableBooleanGateCommand(
-        db, feature_key=sample_feature.key, current_user=test_user
-    ).execute()
+    EnableBooleanGateCommand(db).execute(
+        FeatureKey(key=sample_feature.key), modified_by=test_user
+    )
 
-    DisableBooleanGateCommand(
-        db, feature_key=sample_feature.key, current_user=test_user
-    ).execute()
+    DisableBooleanGateCommand(db).execute(
+        FeatureKey(key=sample_feature.key), modified_by=test_user
+    )
 
     assert GateRepository(db).get_boolean_gate(sample_feature.id) is None
     entries = FeatureAuditLogRepository(db).list_by_feature_id(sample_feature.id)
@@ -36,9 +38,10 @@ def test_disable_boolean_gate_commits_removal_and_audit(db, sample_feature, test
 
 
 def test_enable_actor_gate_commits_gate_and_audit(db, sample_feature, test_user):
-    gate = EnableActorGateCommand(
-        db, feature_key=sample_feature.key, actor_id="actor-1", current_user=test_user
-    ).execute()
+    gate = EnableActorGateCommand(db).execute(
+        ActorGateRequest(key=sample_feature.key, actor_id="actor-1"),
+        modified_by=test_user,
+    )
 
     assert GateRepository(db).get_actor_gate(sample_feature.id, "actor-1").id == gate.id
     entries = FeatureAuditLogRepository(db).list_by_feature_id(sample_feature.id)
@@ -47,13 +50,15 @@ def test_enable_actor_gate_commits_gate_and_audit(db, sample_feature, test_user)
 
 
 def test_disable_actor_gate_commits_removal_and_audit(db, sample_feature, test_user):
-    EnableActorGateCommand(
-        db, feature_key=sample_feature.key, actor_id="actor-1", current_user=test_user
-    ).execute()
+    EnableActorGateCommand(db).execute(
+        ActorGateRequest(key=sample_feature.key, actor_id="actor-1"),
+        modified_by=test_user,
+    )
 
-    DisableActorGateCommand(
-        db, feature_key=sample_feature.key, actor_id="actor-1", current_user=test_user
-    ).execute()
+    DisableActorGateCommand(db).execute(
+        ActorGateRequest(key=sample_feature.key, actor_id="actor-1"),
+        modified_by=test_user,
+    )
 
     assert GateRepository(db).get_actor_gate(sample_feature.id, "actor-1") is None
     entries = FeatureAuditLogRepository(db).list_by_feature_id(sample_feature.id)
@@ -62,14 +67,12 @@ def test_disable_actor_gate_commits_removal_and_audit(db, sample_feature, test_u
 
 def test_enable_boolean_gate_unknown_feature_raises_not_found(db, test_user):
     with pytest.raises(ResourceNotFoundError):
-        EnableBooleanGateCommand(
-            db, feature_key="does-not-exist", current_user=test_user
-        ).execute()
+        EnableBooleanGateCommand(db).execute(
+            FeatureKey(key="does-not-exist"), modified_by=test_user
+        )
 
 
 def test_forced_audit_write_failure_rolls_back_gate_mutation_too(db, faker, test_user):
-    from app.repositories.feature_repository import FeatureRepository
-
     # Flushed (not committed) so this stays part of the same transaction the
     # forced rollback below reverts -- proving the gate mutation never
     # survives without its audit record, not just that both usually succeed.
@@ -82,9 +85,9 @@ def test_forced_audit_write_failure_rolls_back_gate_mutation_too(db, faker, test
         side_effect=RuntimeError("simulated audit write failure"),
     ):
         with pytest.raises(RuntimeError):
-            EnableBooleanGateCommand(
-                db, feature_key=feature_key, current_user=test_user
-            ).execute()
+            EnableBooleanGateCommand(db).execute(
+                FeatureKey(key=feature_key), modified_by=test_user
+            )
 
     assert GateRepository(db).get_boolean_gate(feature_id) is None
     assert FeatureRepository(db).get_feature(feature_id) is None

@@ -5,21 +5,20 @@ from app.exceptions.resource_not_found_error import ResourceNotFoundError
 from app.models.user import User
 from app.repositories.feature_audit_log_repository import FeatureAuditLogRepository
 from app.repositories.feature_repository import FeatureRepository
+from app.schemas.feature import FeatureKey
 
 
 class DeleteFeatureCommand:
-    def __init__(self, db: Session, feature_key: str, current_user: User):
+    def __init__(self, db: Session):
         self.db = db
-        self.feature_key = feature_key
-        self.current_user = current_user
         self.feature_repository = FeatureRepository(db)
         self.audit_log_repository = FeatureAuditLogRepository(db)
 
-    def execute(self) -> None:
-        feature = self.feature_repository.get_feature_by_key(self.feature_key)
+    def execute(self, feature_data: FeatureKey, deleted_by: User) -> None:
+        feature = self.feature_repository.get_feature_by_key(feature_data.key)
         if feature is None:
             raise ResourceNotFoundError(
-                f"Feature with key {self.feature_key!r} not found"
+                f"Feature with key {feature_data.key!r} not found"
             )
 
         feature_id = feature.id
@@ -30,7 +29,7 @@ class DeleteFeatureCommand:
             self.audit_log_repository.create(
                 feature_id=feature_id,
                 feature_key=feature_key,
-                user_id=self.current_user.id,
+                user_id=deleted_by.id,
                 action=feature_audit_actions.DELETED,
                 snapshot=None,
             )

@@ -11,6 +11,15 @@ class FeatureCreate(BaseModel):
     description: str | None = None
 
 
+class FeatureKey(BaseModel):
+    key: str = Field(min_length=1)
+
+
+class ActorGateRequest(BaseModel):
+    key: str = Field(min_length=1)
+    actor_id: str = Field(min_length=1)
+
+
 class GateResponse(BaseModel):
     id: UUID
     gate_type: GateType

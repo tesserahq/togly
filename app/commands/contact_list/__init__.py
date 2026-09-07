@@ -1,1 +1,0 @@
-"""Contact list commands module."""

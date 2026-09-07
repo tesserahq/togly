@@ -14,7 +14,13 @@ from app.db import get_db
 from app.models.user import User
 from app.queries.feature.get_feature_query import GetFeatureQuery
 from app.queries.feature.list_features_query import ListFeaturesQuery
-from app.schemas.feature import FeatureCreate, FeatureResponse, GateResponse
+from app.schemas.feature import (
+    ActorGateRequest,
+    FeatureCreate,
+    FeatureKey,
+    FeatureResponse,
+    GateResponse,
+)
 
 router = APIRouter(prefix="/features", tags=["features"])
 
@@ -32,10 +38,7 @@ def create_feature(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    feature = CreateFeatureCommand(
-        db, key=payload.key, description=payload.description, current_user=current_user
-    ).execute()
-    return feature
+    return CreateFeatureCommand(db).execute(payload, created_by=current_user)
 
 
 @router.get(
@@ -66,7 +69,7 @@ def delete_feature(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    DeleteFeatureCommand(db, feature_key=key, current_user=current_user).execute()
+    DeleteFeatureCommand(db).execute(FeatureKey(key=key), deleted_by=current_user)
 
 
 @router.post(
@@ -79,9 +82,9 @@ def enable_boolean_gate(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return EnableBooleanGateCommand(
-        db, feature_key=key, current_user=current_user
-    ).execute()
+    return EnableBooleanGateCommand(db).execute(
+        FeatureKey(key=key), modified_by=current_user
+    )
 
 
 @router.delete(
@@ -94,7 +97,7 @@ def disable_boolean_gate(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    DisableBooleanGateCommand(db, feature_key=key, current_user=current_user).execute()
+    DisableBooleanGateCommand(db).execute(FeatureKey(key=key), modified_by=current_user)
 
 
 @router.post(
@@ -108,9 +111,9 @@ def enable_actor_gate(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return EnableActorGateCommand(
-        db, feature_key=key, actor_id=actor_id, current_user=current_user
-    ).execute()
+    return EnableActorGateCommand(db).execute(
+        ActorGateRequest(key=key, actor_id=actor_id), modified_by=current_user
+    )
 
 
 @router.delete(
@@ -124,6 +127,6 @@ def disable_actor_gate(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    DisableActorGateCommand(
-        db, feature_key=key, actor_id=actor_id, current_user=current_user
-    ).execute()
+    DisableActorGateCommand(db).execute(
+        ActorGateRequest(key=key, actor_id=actor_id), modified_by=current_user
+    )
