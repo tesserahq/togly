@@ -1,0 +1,122 @@
+"""Command to update a contact."""
+
+import logging
+from uuid import UUID
+
+from app.models.contact import Contact
+from app.repositories.contact_repository import ContactRepository
+from app.schemas.contact import ContactUpdate
+from sqlalchemy.orm import Session
+from tessera_sdk.infra.events.nats_router import NatsEventPublisher
+
+from app.events.contact_events import build_contact_updated_event
+from app.schemas.user import User
+
+
+class UpdateContactCommand:
+    """
+    Command to update an existing contact.
+    Validates uniqueness of email, phone, and external_id, then updates the contact.
+    """
+
+    def __init__(
+        self,
+        db: Session,
+        nats_publisher: NatsEventPublisher | None = None,
+    ):
+        self.db = db
+        self.contact_repository = ContactRepository(db)
+        self.nats_publisher = (
+            nats_publisher if nats_publisher is not None else NatsEventPublisher()
+        )
+        self.logger = logging.getLogger(__name__)
+
+    def execute(
+        self, contact_id: UUID, contact_data: ContactUpdate, current_user: User
+    ) -> Contact:
+        """
+        Execute the command to update a contact.
+
+        Args:
+            contact_id: The ID of the contact to update
+            contact_data: The contact data to update
+            current_user: The user performing the update
+
+        Returns:
+            Contact: The updated contact
+
+        Raises:
+            ValueError: If email already exists for another contact
+            ValueError: If phone already exists for another contact
+            ValueError: If contact is not found
+        """
+        try:
+            # Check if contact exists
+            existing_contact = self.contact_repository.get_contact(contact_id)
+            if not existing_contact:
+                raise ValueError("Contact not found")
+
+            # Check if email is being updated and already exists
+            if contact_data.email:
+                contact_with_email = self.contact_repository.get_contact_by_email(
+                    contact_data.email
+                )
+                if contact_with_email and contact_with_email.id != contact_id:
+                    raise ValueError("Email already registered")
+
+            # Check if phone is being updated and already exists
+            if contact_data.phone:
+                contact_with_phone = self.contact_repository.get_contact_by_phone(
+                    contact_data.phone
+                )
+                if contact_with_phone and contact_with_phone.id != contact_id:
+                    raise ValueError("Phone number already registered")
+
+            # Check if external_id is being updated and already exists
+            if contact_data.external_id:
+                contact_with_external_id = (
+                    self.contact_repository.get_contact_by_external_id(
+                        contact_data.external_id
+                    )
+                )
+                if (
+                    contact_with_external_id
+                    and contact_with_external_id.id != contact_id
+                ):
+                    raise ValueError("External ID already registered")
+
+            # Update contact
+            updated_contact = self.contact_repository.update_contact(
+                contact_id, contact_data
+            )
+
+            if not updated_contact:
+                raise ValueError(f"Failed to update contact {contact_id}")
+
+            # Publish contact updated event
+            self._publish_contact_updated_event(updated_contact, current_user.id)
+
+            return updated_contact
+
+        except ValueError:
+            # Re-raise ValueError as-is (these are expected validation errors)
+            raise
+        except Exception as e:
+            # Rollback the transaction if something goes wrong
+            self.db.rollback()
+            raise Exception(f"Failed to update contact: {e!s}")
+
+    def _publish_contact_updated_event(self, contact: Contact, user_id: UUID) -> None:
+        """
+        Publish a contact updated event.
+
+        Args:
+            contact: The contact that was updated
+            user_id: The ID of the user who performed the update
+        """
+        event = build_contact_updated_event(contact, user_id)
+        if self.nats_publisher is not None:
+            try:
+                self.nats_publisher.publish_sync(event, event.event_type)
+            except Exception:  # pragma: no cover - defensive logging
+                self.logger.exception("Failed to publish contact-updated event to NATS")
