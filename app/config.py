@@ -42,13 +42,6 @@ class Settings(BaseSettings):
     oidc_algorithms: str = "RS256"
     otel_exporter_otlp_endpoint: str = "http://localhost:4318"
     otel_service_name: str = "togly"
-    redis_host: str = Field(
-        default="localhost", json_schema_extra={"env": "REDIS_HOST"}
-    )
-    redis_port: int = Field(default=6379, json_schema_extra={"env": "REDIS_PORT"})
-    redis_namespace: str = Field(
-        default="togly", json_schema_extra={"env": "REDIS_NAMESPACE"}
-    )
     service_account_client_id: str = Field(
         default="", json_schema_extra={"env": "SERVICE_ACCOUNT_CLIENT_ID"}
     )

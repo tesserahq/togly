@@ -11,7 +11,6 @@ def test_service_identifiers_use_togly_names():
     settings = get_settings()
 
     assert settings.app_name == "togly-api"
-    assert settings.redis_namespace == "togly"
     assert settings.otel_service_name == "togly"
     assert settings.db_app_name == "togly-api"
     assert "togly" in settings.database_url
