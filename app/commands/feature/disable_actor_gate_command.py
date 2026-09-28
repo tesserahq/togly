@@ -21,16 +21,12 @@ class DisableActorGateCommand:
         if feature is None:
             raise ResourceNotFoundError(f"Feature with key {gate_data.key!r} not found")
 
-        try:
-            self.gate_repository.disable_actor_gate(feature.id, gate_data.actor_id)
-            self.audit_log_repository.create(
-                feature_id=feature.id,
-                feature_key=feature.key,
-                user_id=modified_by.id,
-                action=feature_audit_actions.ACTOR_DISABLED,
-                snapshot={"actor_id": gate_data.actor_id},
-            )
-            self.db.commit()
-        except Exception:
-            self.db.rollback()
-            raise
+        self.gate_repository.disable_actor_gate(feature.id, gate_data.actor_id)
+        self.audit_log_repository.create(
+            feature_id=feature.id,
+            feature_key=feature.key,
+            user_id=modified_by.id,
+            action=feature_audit_actions.ACTOR_DISABLED,
+            snapshot={"actor_id": gate_data.actor_id},
+        )
+        self.db.flush()

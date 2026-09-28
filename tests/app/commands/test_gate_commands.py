@@ -72,10 +72,9 @@ def test_enable_boolean_gate_unknown_feature_raises_not_found(db, test_user):
         )
 
 
-def test_forced_audit_write_failure_rolls_back_gate_mutation_too(db, faker, test_user):
-    # Flushed (not committed) so this stays part of the same transaction the
-    # forced rollback below reverts -- proving the gate mutation never
-    # survives without its audit record, not just that both usually succeed.
+def test_forced_audit_write_failure_rolls_back_gate_mutation_too(
+    db, execution_boundary, faker, test_user
+):
     feature = FeatureRepository(db).create_feature(key=faker.slug())
     feature_id = feature.id
     feature_key = feature.key
@@ -85,9 +84,12 @@ def test_forced_audit_write_failure_rolls_back_gate_mutation_too(db, faker, test
         side_effect=RuntimeError("simulated audit write failure"),
     ):
         with pytest.raises(RuntimeError):
-            EnableBooleanGateCommand(db).execute(
-                FeatureKey(key=feature_key), modified_by=test_user
-            )
+            with execution_boundary():
+                EnableBooleanGateCommand(db).execute(
+                    FeatureKey(key=feature_key), modified_by=test_user
+                )
 
+    # The gate never survives without its audit record; the feature (set up
+    # before the execution) is untouched.
     assert GateRepository(db).get_boolean_gate(feature_id) is None
-    assert FeatureRepository(db).get_feature(feature_id) is None
+    assert FeatureRepository(db).get_feature(feature_id) is not None
