@@ -22,9 +22,7 @@ class EnableActorGateCommand:
         if feature is None:
             raise ResourceNotFoundError(f"Feature with key {gate_data.key!r} not found")
 
-        gate = self.gate_repository.enable_actor_gate(
-            feature.id, gate_data.actor_id
-        )
+        gate = self.gate_repository.enable_actor_gate(feature.id, gate_data.actor_id)
         self.audit_log_repository.create(
             feature_id=feature.id,
             feature_key=feature.key,

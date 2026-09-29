@@ -17,7 +17,9 @@ rbac = build_rbac_dependencies(resource="feature_check", domain_resolver=actor_d
     response_model=FeatureCheckResponse,
     dependencies=[Depends(rbac["read"])],
 )
-def check_feature(key: str, db: DbSession, actor_id: str | None = Query(default=None, min_length=1)):
+def check_feature(
+    key: str, db: DbSession, actor_id: str | None = Query(default=None, min_length=1)
+):
     enabled = CheckFeatureQuery(db, key=key, actor_id=actor_id).execute()
     return FeatureCheckResponse(key=key, enabled=enabled)
 
@@ -27,6 +29,8 @@ def check_feature(key: str, db: DbSession, actor_id: str | None = Query(default=
     response_model=EnabledFeaturesResponse,
     dependencies=[Depends(rbac["read"])],
 )
-def list_enabled_features(db: DbSession, actor_id: str | None = Query(default=None, min_length=1)):
+def list_enabled_features(
+    db: DbSession, actor_id: str | None = Query(default=None, min_length=1)
+):
     features = ListEnabledFeaturesQuery(db, actor_id=actor_id).execute()
     return EnabledFeaturesResponse(features=features)
