@@ -1,13 +1,13 @@
 from fastapi import Depends, Query
 from sqlalchemy.orm import Session
 
-from app.db import get_db
+from app.db import DbSession
 from app.exceptions.resource_not_found_error import ResourceNotFoundError
 from app.models.feature import Feature
 from app.repositories.feature_repository import FeatureRepository
 
 
-def get_feature_by_key(key: str, db: Session = Depends(get_db)) -> Feature:
+def get_feature_by_key(key: str, db: DbSession) -> Feature:
     """
     Dependency to get a feature by its unique key.
     Raises ResourceNotFoundError (mapped to 404) if not found.

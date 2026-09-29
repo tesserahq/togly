@@ -10,7 +10,7 @@ from app.commands.feature.disable_actor_gate_command import DisableActorGateComm
 from app.commands.feature.disable_boolean_gate_command import DisableBooleanGateCommand
 from app.commands.feature.enable_actor_gate_command import EnableActorGateCommand
 from app.commands.feature.enable_boolean_gate_command import EnableBooleanGateCommand
-from app.db import get_db
+from app.db import DbSession
 from app.models.user import User
 from app.queries.feature.get_feature_query import GetFeatureQuery
 from app.queries.feature.list_features_query import ListFeaturesQuery
@@ -35,7 +35,7 @@ rbac = build_rbac_dependencies(resource="feature_admin")
 )
 def create_feature(
     payload: FeatureCreate,
-    db: Session = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     return CreateFeatureCommand(db).execute(payload, created_by=current_user)
@@ -46,7 +46,7 @@ def create_feature(
     response_model=Page[FeatureResponse],
     dependencies=[Depends(rbac["read"])],
 )
-def list_features(db: Session = Depends(get_db)):
+def list_features(db: DbSession):
     return paginate(ListFeaturesQuery(db).execute())
 
 
@@ -55,7 +55,7 @@ def list_features(db: Session = Depends(get_db)):
     response_model=FeatureResponse,
     dependencies=[Depends(rbac["read"])],
 )
-def get_feature(key: str, db: Session = Depends(get_db)):
+def get_feature(key: str, db: DbSession):
     return GetFeatureQuery(db, key).execute()
 
 
@@ -66,7 +66,7 @@ def get_feature(key: str, db: Session = Depends(get_db)):
 )
 def delete_feature(
     key: str,
-    db: Session = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     DeleteFeatureCommand(db).execute(FeatureKey(key=key), deleted_by=current_user)
@@ -79,7 +79,7 @@ def delete_feature(
 )
 def enable_boolean_gate(
     key: str,
-    db: Session = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     return EnableBooleanGateCommand(db).execute(
@@ -94,7 +94,7 @@ def enable_boolean_gate(
 )
 def disable_boolean_gate(
     key: str,
-    db: Session = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     DisableBooleanGateCommand(db).execute(FeatureKey(key=key), modified_by=current_user)
@@ -108,7 +108,7 @@ def disable_boolean_gate(
 def enable_actor_gate(
     key: str,
     actor_id: str,
-    db: Session = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     return EnableActorGateCommand(db).execute(
@@ -124,7 +124,7 @@ def enable_actor_gate(
 def disable_actor_gate(
     key: str,
     actor_id: str,
-    db: Session = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     DisableActorGateCommand(db).execute(

@@ -24,16 +24,12 @@ class DeleteFeatureCommand:
         feature_id = feature.id
         feature_key = feature.key
 
-        try:
-            self.feature_repository.delete_feature(feature)
-            self.audit_log_repository.create(
-                feature_id=feature_id,
-                feature_key=feature_key,
-                user_id=deleted_by.id,
-                action=feature_audit_actions.DELETED,
-                snapshot=None,
-            )
-            self.db.commit()
-        except Exception:
-            self.db.rollback()
-            raise
+        self.feature_repository.delete_feature(feature)
+        self.audit_log_repository.create(
+            feature_id=feature_id,
+            feature_key=feature_key,
+            user_id=deleted_by.id,
+            action=feature_audit_actions.DELETED,
+            snapshot=None,
+        )
+        self.db.flush()

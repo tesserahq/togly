@@ -31,7 +31,9 @@ def test_duplicate_key_raises(db, sample_feature, test_user):
         )
 
 
-def test_forced_audit_write_failure_rolls_back_the_mutation_too(db, faker, test_user):
+def test_forced_audit_write_failure_rolls_back_the_mutation_too(
+    db, execution_boundary, faker, test_user
+):
     key = faker.slug()
 
     with patch(
@@ -39,9 +41,11 @@ def test_forced_audit_write_failure_rolls_back_the_mutation_too(db, faker, test_
         side_effect=RuntimeError("simulated audit write failure"),
     ):
         with pytest.raises(RuntimeError):
-            CreateFeatureCommand(db).execute(
-                FeatureCreate(key=key, description="desc"), created_by=test_user
-            )
+            with execution_boundary():
+                CreateFeatureCommand(db).execute(
+                    FeatureCreate(key=key, description="desc"), created_by=test_user
+                )
 
-    # The mutation must not exist either -- it was never committed independently.
+    # The entry point's rollback removes the mutation too: the command never
+    # commits it independently.
     assert FeatureRepository(db).get_feature_by_key(key) is None

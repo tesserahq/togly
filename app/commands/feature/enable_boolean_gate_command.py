@@ -24,19 +24,15 @@ class EnableBooleanGateCommand:
                 f"Feature with key {feature_data.key!r} not found"
             )
 
-        try:
-            gate = self.gate_repository.enable_boolean_gate(feature.id)
-            self.audit_log_repository.create(
-                feature_id=feature.id,
-                feature_key=feature.key,
-                user_id=modified_by.id,
-                action=feature_audit_actions.BOOLEAN_ENABLED,
-                snapshot=None,
-            )
-            self.db.commit()
-        except Exception:
-            self.db.rollback()
-            raise
+        gate = self.gate_repository.enable_boolean_gate(feature.id)
+        self.audit_log_repository.create(
+            feature_id=feature.id,
+            feature_key=feature.key,
+            user_id=modified_by.id,
+            action=feature_audit_actions.BOOLEAN_ENABLED,
+            snapshot=None,
+        )
+        self.db.flush()
 
         self.db.refresh(gate)
         return gate

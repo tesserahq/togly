@@ -33,15 +33,11 @@ class CreateFeatureCommand:
                 action=feature_audit_actions.CREATED,
                 snapshot={"key": feature.key, "description": feature.description},
             )
-            self.db.commit()
+            self.db.flush()
         except IntegrityError:
-            self.db.rollback()
             raise DuplicateResourceError(
                 f"Feature with key {feature_data.key!r} already exists"
             )
-        except Exception:
-            self.db.rollback()
-            raise
 
         self.db.refresh(feature)
         return feature
