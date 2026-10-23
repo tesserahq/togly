@@ -34,7 +34,7 @@ psycopg2-binary = "^2.9.10"
 psycopg = {version = "^3.2.0", extras = ["binary"]}
 pydantic = {extras = ["email"], version = "^2.11.3"}
 black = "^26.3.1"
-ruff = "0.16.5"
+ruff = "0.17.2"
 pydantic-settings = "^2.9.1"
 python-jose = "^3.3.0"
 
